@@ -94,8 +94,10 @@ export const useAICanvasStore = create<AICanvasStore>()((set, get) => ({
   panX: 0,
   panY: 0,
   showGrid: true,
-  showMinimap: false,      // Node operations
-      addNode: (nodeData) => {
+  showMinimap: false,
+
+  // Node operations
+  addNode: (nodeData) => {
         const id = nanoid();
         const now = new Date();
         const newNode: AINode = {
@@ -225,6 +227,7 @@ export const useAICanvasStore = create<AICanvasStore>()((set, get) => ({
         // Create a new node with expanded content
         get().addNode({
           type: 'text',
+          title: 'Expanded: ' + node.title,
           content: expanded,
           x: node.x + 250,
           y: node.y,

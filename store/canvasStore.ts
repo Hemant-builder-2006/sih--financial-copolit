@@ -8,8 +8,10 @@ export type NodeType = {
   y: number;
   width: number;
   height: number;
-  type: 'text' | 'image' | 'pdf' | 'video';
+  type: 'text' | 'image' | 'pdf' | 'video' | 'ai' | 'document' | 'note' | 'audio';
   content: string;
+  aiStatus?: 'idle' | 'processing' | 'done';
+  aiResponse?: string;
 };
 
 export type EdgeType = {
