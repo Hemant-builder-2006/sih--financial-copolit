@@ -3,6 +3,7 @@ import { Handle, Position, NodeProps, NodeResizer } from 'reactflow';
 import { Card, CardHeader, CardContent, CardFooter } from './ui/card';
 import { Button } from './ui/button';
 import { FileText, File, Image, Video, Bot, MoreHorizontal, ExternalLink, Trash2, Maximize2, Minimize2, Upload } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 
 interface NodeData {
   title: string;
@@ -22,6 +23,9 @@ const ReactFlowNodeCard: React.FC<NodeProps<NodeData>> = ({ id, data, selected }
   const [showSizeControls, setShowSizeControls] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descInputRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Store actions
+  const { setAiSummary, addAlert } = useAppStore();
   
   // File input refs for each node type
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -82,11 +86,23 @@ const ReactFlowNodeCard: React.FC<NodeProps<NodeData>> = ({ id, data, selected }
 
   const handleAIAction = (action: string) => {
     updateNode({ aiStatus: 'processing' });
+    
+    // Add alert that AI processing started
+    addAlert(`AI ${action} started for ${data.title}`, 'info');
+    
     setTimeout(() => {
+      const aiResponse = `AI ${action} completed for: ${data.title}`;
       updateNode({ 
         aiStatus: 'done',
-        aiResponse: `AI ${action} completed for: ${data.title}`
+        aiResponse: aiResponse
       });
+      
+      // Update global AI summary in store
+      setAiSummary(`Latest AI Analysis: ${aiResponse}. Generated from ${data.type} node "${data.title}".`);
+      
+      // Add success alert
+      addAlert(`AI ${action} completed successfully`, 'info');
+      
     }, 2000);
   };
 

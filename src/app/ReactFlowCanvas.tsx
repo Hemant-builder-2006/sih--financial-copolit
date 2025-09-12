@@ -1,13 +1,12 @@
 
 'use client';
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import ReactFlow, {
   addEdge,
   Background,
   BackgroundVariant,
   Controls,
-  MiniMap,
   ReactFlowProvider,
   Node,
   Edge,
@@ -163,6 +162,24 @@ const initialEdges: Edge[] = [
 const ReactFlowCanvas: React.FC = () => {
   // State for toolbar dropdown (moved inside component)
   const [showToolbarDropdown, setShowToolbarDropdown] = useState(false);
+  
+  // Dark mode detection
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  useEffect(() => {
+    // Check if dark mode is enabled
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkDarkMode();
+    // Watch for changes
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    
+    return () => observer.disconnect();
+  }, []);
+
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
@@ -457,22 +474,51 @@ const ReactFlowCanvas: React.FC = () => {
 
   return (
 
-    <div className="w-full h-screen bg-gray-50">
-      {/* Toolbar Dropdown */}
-      <div className="absolute top-4 left-4 z-10">
-        <div className="relative inline-block text-left">
-          <Button
-            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg"
-            aria-haspopup="true"
-            aria-expanded="false"
-            id="toolbar-dropdown-button"
-            onClick={() => setShowToolbarDropdown((prev) => !prev)}
-          >
-            Toolbar
-            <span className="ml-2">▼</span>
-          </Button>
-          {showToolbarDropdown && (
-            <div className="origin-top-left absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none p-3 border border-gray-200 space-y-2 z-50">
+    <div className={`w-full h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      <ReactFlowProvider>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onEdgeClick={onEdgeClick}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          connectionLineComponent={ReactFlowConnectionLine}
+          connectionLineType={ConnectionLineType.SmoothStep}
+          fitView
+          attributionPosition="bottom-left"
+        >
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={20} 
+            size={1}
+            className={isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}
+          />
+          <Controls className={`border rounded-lg shadow-lg ${
+            isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+          }`} />
+          
+          {/* Toolbar positioned at bottom right */}
+          <div className="absolute bottom-4 right-4 z-10">
+            <div className="relative inline-block text-left">
+              <Button
+                className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg"
+                aria-haspopup="true"
+                aria-expanded="false"
+                id="toolbar-dropdown-button"
+                onClick={() => setShowToolbarDropdown((prev) => !prev)}
+              >
+                Toolbar
+                <span className="ml-2">▼</span>
+              </Button>
+              {showToolbarDropdown && (
+                <div className={`origin-bottom-right absolute bottom-full right-0 mb-2 w-56 rounded-md shadow-lg ring-1 ring-opacity-5 focus:outline-none p-3 border space-y-2 z-50 ${
+                  isDarkMode 
+                    ? 'bg-gray-800 ring-gray-600 border-gray-700' 
+                    : 'bg-white ring-black border-gray-200'
+                }`}>
               <Button
                 onClick={addNode}
                 className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold mb-1"
@@ -602,71 +648,10 @@ const ReactFlowCanvas: React.FC = () => {
               <div className="text-xs text-gray-500 pt-1">
                 {nodes.length} nodes, {edges.length} connections
               </div>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-
-      {/* Instructions */}
-      <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-4 border border-gray-200 max-w-sm">
-        <h3 className="font-bold text-gray-800 mb-2">How to use:</h3>
-        <ul className="text-sm text-gray-600 space-y-1">
-          <li>• <strong>Connect:</strong> Drag colored handles between nodes</li>
-          <li>• <strong>Edit title:</strong> Double-click node title</li>
-          <li>• <strong>Edit content:</strong> Click "Open" button</li>
-          <li>• <strong>Change type:</strong> Click ⋯ button</li>
-          <li>• <strong>AI actions:</strong> Available on AI nodes</li>
-        </ul>
-      </div>
-
-      <ReactFlowProvider>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onEdgeClick={onEdgeClick}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          connectionLineComponent={ReactFlowConnectionLine}
-          className="react-flow-canvas"
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          elementsSelectable={true}
-          edgesFocusable={true}
-          nodesDraggable={true}
-          nodesConnectable={true}
-          connectionLineStyle={{ 
-            stroke: '#8b5cf6', 
-            strokeWidth: 3,
-            strokeDasharray: '5,5',
-            animation: 'dash 1s linear infinite'
-          }}
-          connectionLineType={ConnectionLineType.Bezier}
-          snapToGrid={true}
-          snapGrid={[15, 15]}
-          connectionRadius={25}
-          connectOnClick={false}
-          onConnectStart={(event, { nodeId, handleType }) => {
-            console.log('Connection started from:', nodeId, handleType);
-          }}
-          onConnectEnd={(event) => {
-            console.log('Connection ended');
-          }}
-        >
-          <Background 
-            variant={BackgroundVariant.Dots} 
-            gap={20} 
-            size={1}
-            className="bg-gray-50"
-          />
-          <Controls className="bg-white border border-gray-200 rounded-lg shadow-lg" />
-          <MiniMap 
-            className="bg-white border border-gray-200 rounded-lg shadow-lg"
-            nodeColor="#8b5cf6"
-            maskColor="rgba(139, 92, 246, 0.1)"
-          />
         </ReactFlow>
       </ReactFlowProvider>
     </div>
