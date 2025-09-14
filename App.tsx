@@ -58,15 +58,9 @@ import ReactFlow, {
   OnConnect,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import AINode from './components/AINode';
 
-// --- Custom AINode component ---
-const AINode: React.FC<NodeProps> = ({ data }) => (
-  <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 2px 8px #0001', padding: 20, minWidth: 120, textAlign: 'center' }}>
-    <div style={{ fontWeight: 600, color: '#222' }}>{data?.label || 'AI Node'}</div>
-    <Handle type="target" position={Position.Left} style={{ background: '#2563eb', width: 12, height: 12, borderRadius: 6, left: -8, top: '50%', border: '2px solid #fff' }} />
-    <Handle type="source" position={Position.Right} style={{ background: '#22c55e', width: 12, height: 12, borderRadius: 6, right: -8, top: '50%', border: '2px solid #fff' }} />
-  </div>
-);
+// Note: AINode component is now imported from components/AINode.tsx
 
 
 const initialNodes: Node[] = [

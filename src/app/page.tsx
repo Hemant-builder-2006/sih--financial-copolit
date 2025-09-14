@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import Dashboard from "@/components/Dashboard";
-import ReactFlowCanvas from "@/components/ReactFlowCanvas";
+import ReactFlowCanvas from "./ReactFlowCanvas";
 
 export default function Page() {
   const [currentView, setCurrentView] = useState<"dashboard" | "canvas">("dashboard");

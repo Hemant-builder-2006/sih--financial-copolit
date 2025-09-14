@@ -77,7 +77,7 @@
 
 **Delete these entire folders (if they exist):**
 - [ ] app_new/
-- [ ] backend/
+- [x] backend/ (DELETED)
 - [ ] src/app/ai-canvas/
 
 ## ✅ KEEP These Essential Files:

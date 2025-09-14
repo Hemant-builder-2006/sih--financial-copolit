@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAppStore } from "../store/useAppStore";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { RefreshCw, TrendingUp, AlertTriangle, Brain, DollarSign, X, Trash2 } from "lucide-react";
 
 const mockBIData = [
@@ -30,6 +30,7 @@ const Dashboard: React.FC = () => {
   const alerts = useAppStore((s) => s.alerts);
   const chartData = useAppStore((s) => s.chartData);
   const tradingSignals = useAppStore((s) => s.tradingSignals);
+  const biData = useAppStore((s) => s.biData);
   const { setChartData, setTradingSignals, addAlert, clearAlerts, removeAlert } = useAppStore();
 
   // Dark mode detection
@@ -48,25 +49,7 @@ const Dashboard: React.FC = () => {
   const loadMockData = async () => {
     setIsLoading(true);
     try {
-      // Fetch data from APIs
-      const [alertsRes, chartRes, signalsRes] = await Promise.all([
-        fetch('/api/alerts'),
-        fetch('/api/chart'),
-        fetch('/api/signals')
-      ]);
-      
-      const alertsData = await alertsRes.json();
-      const chartData = await chartRes.json();
-      const signalsData = await signalsRes.json();
-      
-      // Update store with API data
-      alertsData.forEach((alert: any) => addAlert(alert.message, alert.severity));
-      setChartData(chartData);
-      setTradingSignals(signalsData);
-      
-      addAlert("Market data refreshed from APIs", "info");
-    } catch (error) {
-      // Fallback to mock data if APIs fail
+      // Load mock data directly (no backend APIs needed)
       setChartData([
         { name: "Jan", value: 120 },
         { name: "Feb", value: 150 },
@@ -80,7 +63,9 @@ const Dashboard: React.FC = () => {
         { id: "2", signal: "Hold" },
         { id: "3", signal: "Sell" },
       ]);
-      addAlert("Using cached data - API unavailable", "warning");
+      addAlert("Mock data loaded successfully", "info");
+    } catch (error) {
+      addAlert("Error loading data", "danger");
     }
     setIsLoading(false);
   };
@@ -254,6 +239,209 @@ const Dashboard: React.FC = () => {
                 ))
               )}
             </div>
+          </div>
+        </div>
+
+        {/* BI Widget */}
+        <div className="mt-8">
+          <div className={`rounded-xl shadow-sm border p-6 ${
+            isDarkMode 
+              ? 'bg-gray-800 border-gray-700' 
+              : 'bg-white border-gray-200'
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <DollarSign className="h-5 w-5 text-green-500" />
+                <h2 className={`text-lg font-semibold ${
+                  isDarkMode ? 'text-white' : 'text-gray-900'
+                }`}>Business Intelligence</h2>
+              </div>
+            </div>
+            
+            {!biData ? (
+              <div className={`text-center py-8 ${
+                isDarkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                <DollarSign className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg mb-2">No BI data available</p>
+                <p className="text-sm">Upload CSV or Excel files in the Canvas to generate business insights</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Data Table */}
+                <div>
+                  <h3 className={`text-md font-semibold mb-3 ${
+                    isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                  }`}>Data Table</h3>
+                  <div className="overflow-x-auto max-h-64 border rounded-lg">
+                    <table className={`min-w-full text-sm ${
+                      isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
+                    }`}>
+                      <thead className={isDarkMode ? 'bg-gray-600' : 'bg-gray-100'}>
+                        <tr>
+                          {Object.keys(biData.table[0] || {}).map((column) => (
+                            <th key={column} className={`px-4 py-2 text-left font-medium ${
+                              isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                            }`}>
+                              {column}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {biData.table.slice(0, 10).map((row, index) => (
+                          <tr key={index} className={`border-b ${
+                            isDarkMode ? 'border-gray-600' : 'border-gray-200'
+                          }`}>
+                            {Object.values(row).map((value: any, cellIndex) => (
+                              <td key={cellIndex} className={`px-4 py-2 ${
+                                isDarkMode ? 'text-gray-300' : 'text-gray-900'
+                              }`}>
+                                {value !== null && value !== undefined ? String(value) : '-'}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {biData.table.length > 10 && (
+                      <div className={`text-center py-2 text-sm ${
+                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        Showing 10 of {biData.table.length} rows
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Charts */}
+                {biData.charts && biData.charts.length > 0 && (
+                  <div>
+                    <h3 className={`text-md font-semibold mb-3 ${
+                      isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                    }`}>Charts</h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {biData.charts.map((chart) => (
+                        <div key={chart.id} className={`p-4 rounded-lg border ${
+                          isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+                        }`}>
+                          <h4 className={`text-sm font-medium mb-3 ${
+                            isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                          }`}>{chart.title}</h4>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              {chart.type === 'line' ? (
+                                <LineChart data={chart.data}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#f1f5f9'} />
+                                  <XAxis 
+                                    dataKey={chart.config.xKey} 
+                                    stroke={isDarkMode ? '#9CA3AF' : '#64748b'}
+                                    tick={{ fontSize: 12 }}
+                                  />
+                                  <YAxis 
+                                    stroke={isDarkMode ? '#9CA3AF' : '#64748b'}
+                                    tick={{ fontSize: 12 }}
+                                  />
+                                  <Tooltip 
+                                    contentStyle={{
+                                      backgroundColor: isDarkMode ? '#374151' : 'white',
+                                      border: isDarkMode ? '1px solid #4B5563' : '1px solid #e2e8f0',
+                                      borderRadius: '8px',
+                                      color: isDarkMode ? '#F3F4F6' : '#1F2937'
+                                    }}
+                                  />
+                                  <Line 
+                                    type="monotone" 
+                                    dataKey={chart.config.yKey} 
+                                    stroke="#10B981" 
+                                    strokeWidth={2} 
+                                    dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }} 
+                                  />
+                                </LineChart>
+                              ) : chart.type === 'bar' ? (
+                                <BarChart data={chart.data}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#f1f5f9'} />
+                                  <XAxis 
+                                    dataKey={chart.config.xKey} 
+                                    stroke={isDarkMode ? '#9CA3AF' : '#64748b'}
+                                    tick={{ fontSize: 12 }}
+                                  />
+                                  <YAxis 
+                                    stroke={isDarkMode ? '#9CA3AF' : '#64748b'}
+                                    tick={{ fontSize: 12 }}
+                                  />
+                                  <Tooltip 
+                                    contentStyle={{
+                                      backgroundColor: isDarkMode ? '#374151' : 'white',
+                                      border: isDarkMode ? '1px solid #4B5563' : '1px solid #e2e8f0',
+                                      borderRadius: '8px',
+                                      color: isDarkMode ? '#F3F4F6' : '#1F2937'
+                                    }}
+                                  />
+                                  <Bar dataKey={chart.config.yKey} fill="#3B82F6" radius={4} />
+                                </BarChart>
+                              ) : (
+                                <PieChart>
+                                  <Pie
+                                    data={chart.data}
+                                    dataKey={chart.config.valueKey}
+                                    nameKey={chart.config.nameKey}
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={80}
+                                    label={(entry: any) => `${entry.name} ${((entry.value / chart.data.reduce((sum: number, item: any) => sum + item.value, 0)) * 100).toFixed(0)}%`}
+                                  >
+                                    {chart.data.map((entry: any, index: number) => {
+                                      const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
+                                      return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                    })}
+                                  </Pie>
+                                  <Tooltip 
+                                    contentStyle={{
+                                      backgroundColor: isDarkMode ? '#374151' : 'white',
+                                      border: isDarkMode ? '1px solid #4B5563' : '1px solid #e2e8f0',
+                                      borderRadius: '8px',
+                                      color: isDarkMode ? '#F3F4F6' : '#1F2937'
+                                    }}
+                                  />
+                                </PieChart>
+                              )}
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Insights */}
+                <div>
+                  <h3 className={`text-md font-semibold mb-3 ${
+                    isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                  }`}>AI Insights</h3>
+                  <div className={`p-4 rounded-lg border prose max-w-none ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-gray-300' 
+                      : 'bg-gray-50 border-gray-200 text-gray-700'
+                  }`}>
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                      {biData.insights}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metadata */}
+                {biData.metadata && (
+                  <div className={`text-xs ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    Analysis completed on {new Date(biData.metadata.analyzedAt).toLocaleString()} • 
+                    {biData.metadata.rowCount} rows • {biData.metadata.columnCount} columns
+                    {biData.metadata.fileName && ` • ${biData.metadata.fileName}`}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
