@@ -25,6 +25,7 @@ import DocumentNode from "../../components/node-types/DocumentNode";
 import ImageNode from "../../components/node-types/ImageNode";
 import VideoNode from "../../components/node-types/VideoNode";
 import CompanyNode from "../../components/node-types/CompanyNode";
+import ShopifyNode from "../../components/node-types/ShopifyNode";
 
 // Import custom components
 import ReactFlowAnimatedEdge from "../../components/ReactFlowAnimatedEdge";
@@ -32,10 +33,11 @@ import ReactFlowConnectionLine from "../../components/ReactFlowConnectionLine";
 
 // Import UI components
 import { Button } from "../../components/ui/button";
-import { Plus, FileText, Image, Video, File, FileImage, Trash2, Download, Upload } from "lucide-react";
+import { Plus, FileText, Image, Video, File, FileImage, Trash2, Download, Upload, ShoppingBag } from "lucide-react";
 
 // Import types
-import { NodeData, AINodeData, TextNodeData, DocumentNodeData, ImageNodeData, VideoNodeData, CompanyNodeData } from "../../components/node-types/interfaces";
+import { NodeData, AINodeData, TextNodeData, DocumentNodeData, ImageNodeData, VideoNodeData, CompanyNodeData, ShopifyNodeData } from "../../components/node-types/interfaces";
+import { exportWorkspace as exportWorkspaceAPI, importWorkspace as importWorkspaceAPI } from "../../lib/api-utils";
 
 // Node types configuration
 const nodeTypes = {
@@ -45,6 +47,7 @@ const nodeTypes = {
   image: ImageNode,
   video: VideoNode,
   company: CompanyNode,
+  shopify: ShopifyNode,
 };
 
 // Edge types configuration
@@ -288,52 +291,61 @@ const ReactFlowCanvas: React.FC = () => {
     setShowToolbarDropdown(false);
   }, [setNodes]);
 
-  // Export workspace
-  const exportWorkspace = useCallback(() => {
-    const workspace = {
-      nodes,
-      edges,
-      timestamp: new Date().toISOString(),
-      version: '1.0'
+  // Add new shopify node
+  const addShopifyNode = useCallback(() => {
+    const newNode: Node<ShopifyNodeData> = {
+      id: generateNodeId(),
+      type: 'shopify',
+      position: { 
+        x: Math.random() * 500 + 100,
+        y: Math.random() * 300 + 100,
+      },
+      data: {
+        title: 'Shopify Store',
+        type: 'shopify',
+        description: 'Connect and analyze Shopify store data',
+        fetchStatus: 'idle',
+        size: 'medium',
+        width: 320,
+        height: 340
+      },
     };
-    
-    const dataStr = JSON.stringify(workspace, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `reactflow-workspace-${new Date().toISOString().split('T')[0]}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  }, [nodes, edges]);
+    setNodes((nds) => nds.concat(newNode));
+    setShowToolbarDropdown(false);
+  }, [setNodes]);
 
-  // Import workspace
-  const importWorkspace = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  // Export workspace to backend
+  const exportWorkspace = useCallback(async () => {
+    try {
+      await exportWorkspaceAPI('json');
+      // Success message is handled by the API utility
+    } catch (error) {
+      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, []);
+
+  // Import workspace from backend
+  const importWorkspace = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const workspace = JSON.parse(e.target?.result as string);
-        
-        if (workspace.nodes && workspace.edges) {
-          setNodes(workspace.nodes);
-          setEdges(workspace.edges);
-        } else {
-          alert('Invalid workspace file format');
-        }
-      } catch (error) {
-        alert('Error loading workspace file');
-        console.error('Import error:', error);
-      }
-    };
-    reader.readAsText(file);
-    
+    try {
+      const imported = await importWorkspaceAPI(file);
+      
+      // Refresh the canvas to show imported data
+      // Note: This is a simplified refresh - in production you'd want to 
+      // fetch the updated nodes/edges from the backend
+      window.location.reload();
+      
+      alert(`Import successful: ${imported.nodes} nodes, ${imported.edges} edges, ${imported.aiInsights} AI insights, ${imported.kpis} KPIs`);
+    } catch (error) {
+      alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Import error:', error);
+    }
+
     // Reset the input value so the same file can be selected again
     event.target.value = '';
-  }, [setNodes, setEdges]);
+  }, []);
 
   // Clear workspace
   const clearWorkspace = useCallback(() => {
@@ -499,7 +511,7 @@ const ReactFlowCanvas: React.FC = () => {
                     onClick={addCompanyNode}
                     variant="outline"
                     size="sm"
-                    className={`w-full flex items-center gap-2 mb-2 ${
+                    className={`w-full flex items-center gap-2 mb-1 ${
                       isDarkMode 
                         ? 'bg-orange-900/50 hover:bg-orange-800 text-orange-300 border-orange-800'
                         : 'bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200'
@@ -507,6 +519,20 @@ const ReactFlowCanvas: React.FC = () => {
                   >
                     <FileImage size={14} />
                     Company Data
+                  </Button>
+
+                  <Button
+                    onClick={addShopifyNode}
+                    variant="outline"
+                    size="sm"
+                    className={`w-full flex items-center gap-2 mb-2 ${
+                      isDarkMode 
+                        ? 'bg-purple-900/50 hover:bg-purple-800 text-purple-300 border-purple-800'
+                        : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
+                    }`}
+                  >
+                    <ShoppingBag size={14} />
+                    Shopify Store
                   </Button>
 
                   <div className="border-t border-gray-200 pt-2">

@@ -53,23 +53,29 @@ export const useNodeActions = (id: string, data: NodeData) => {
     updateNode({ aiStatus: 'processing' });
 
     try {
-      // Simulate AI processing with mock responses (purely frontend)
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate processing time
-      
-      let aiResponse: string;
-      switch (action.toLowerCase()) {
-        case 'analyze':
-          aiResponse = `Analysis of "${content}": This content appears to be well-structured and informative. Key themes include innovation, efficiency, and user experience. The tone is professional and engaging, making it suitable for business contexts.`;
-          break;
-        case 'summarize':
-          aiResponse = `Summary of "${content}": ${content.length > 100 ? content.substring(0, 100) + '...' : content} (This is a concise summary highlighting the main points and key takeaways from the original content.)`;
-          break;
-        case 'expand':
-          aiResponse = `Expanded version of "${content}": ${content} Additionally, this topic encompasses various aspects that deserve deeper exploration. The implications extend beyond the immediate scope, offering opportunities for innovation and improvement. Consider the broader context and potential applications in different scenarios.`;
-          break;
-        default:
-          aiResponse = `Mock AI ${action} result for: "${content}" - This is a simulated response demonstrating the AI functionality in frontend-only mode.`;
+      // Call our secure backend API
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          prompt: content, 
+          action: action.toLowerCase() 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `API request failed with status ${response.status}`);
       }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const aiResponse = data.result || 'No response received from AI service.';
       
       updateNode({ 
         aiStatus: 'done',
@@ -77,7 +83,7 @@ export const useNodeActions = (id: string, data: NodeData) => {
       });
       
       // Update global AI summary in store
-      setAiSummary(`Latest AI Analysis: ${aiResponse}. Generated from ${data.type} node "${data.title}".`);
+      setAiSummary(`Latest AI Analysis: ${aiResponse.substring(0, 200)}${aiResponse.length > 200 ? '...' : ''} Generated from ${data.type} node "${data.title}".`);
       
       // Add success alert
       addAlert(`AI ${action} completed successfully`, 'info');
@@ -86,7 +92,7 @@ export const useNodeActions = (id: string, data: NodeData) => {
       console.error('AI action error:', error);
       
       // Fallback to mock result on error
-      const mockResponse = `Mock ${action} completed for: ${data.title} (${error instanceof Error ? error.message : 'AI service unavailable'})`;
+      const mockResponse = `Mock ${action} completed for: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}" (${error instanceof Error ? error.message : 'AI service unavailable'})`;
       updateNode({ 
         aiStatus: 'done',
         aiResponse: mockResponse
@@ -96,7 +102,7 @@ export const useNodeActions = (id: string, data: NodeData) => {
       setAiSummary(`Latest AI Analysis: ${mockResponse}. Generated from ${data.type} node "${data.title}".`);
       
       // Add error alert
-      addAlert(`AI ${action} failed, using mock result`, 'warning');
+      addAlert(`AI ${action} failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'warning');
     }
   }, [updateNode, data.type, data.title, setAiSummary, addAlert]);
 

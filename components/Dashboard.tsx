@@ -2,13 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { RefreshCw, TrendingUp, AlertTriangle, Brain, DollarSign, X, Trash2 } from "lucide-react";
-
-const mockBIData = [
-  { metric: "Revenue", value: "$12,000", change: "+5.2%" },
-  { metric: "Expenses", value: "$7,500", change: "-2.1%" },
-  { metric: "Profit", value: "$4,500", change: "+8.7%" },
-  { metric: "ROI", value: "37.5%", change: "+3.2%" },
-];
+import { getDashboardData } from "../lib/api-utils";
 
 const severityColors = {
   info: "bg-blue-50 text-blue-700 border-blue-200",
@@ -25,6 +19,7 @@ const signalColors = {
 const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [dashboardData, setDashboardData] = useState<any>(null);
   
   const aiSummary = useAppStore((s) => s.aiSummary);
   const alerts = useAppStore((s) => s.alerts);
@@ -46,35 +41,72 @@ const Dashboard: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
-  const loadMockData = async () => {
+  const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      // Load mock data directly (no backend APIs needed)
-      setChartData([
-        { name: "Jan", value: 120 },
-        { name: "Feb", value: 150 },
-        { name: "Mar", value: 90 },
-        { name: "Apr", value: 200 },
-        { name: "May", value: 170 },
-        { name: "Jun", value: 220 },
-      ]);
-      setTradingSignals([
-        { id: "1", signal: "Buy" },
-        { id: "2", signal: "Hold" },
-        { id: "3", signal: "Sell" },
-      ]);
-      addAlert("Mock data loaded successfully", "info");
+      const data = await getDashboardData();
+      
+      if (data.success && data.data) {
+        // Update store with real dashboard data
+        if (data.data.chartData) {
+          setChartData(data.data.chartData);
+        }
+        if (data.data.tradingSignals) {
+          setTradingSignals(data.data.tradingSignals);
+        }
+        if (data.data.alerts && data.data.alerts.length > 0) {
+          data.data.alerts.forEach((alert: any) => {
+            addAlert(alert.message, alert.severity);
+          });
+        }
+        
+        // Set the full dashboard data
+        setDashboardData(data.data);
+        
+        addAlert("Dashboard data loaded successfully", "info");
+      } else {
+        // Fallback to mock data if no real data available
+        setChartData([
+          { name: "Jan", value: 120 },
+          { name: "Feb", value: 150 },
+          { name: "Mar", value: 90 },
+          { name: "Apr", value: 200 },
+          { name: "May", value: 170 },
+          { name: "Jun", value: 220 },
+        ]);
+        setTradingSignals([
+          { id: "1", signal: "Buy" },
+          { id: "2", signal: "Hold" },
+          { id: "3", signal: "Sell" },
+        ]);
+        addAlert("Using demo data - connect Canvas nodes for real insights", "warning");
+      }
     } catch (error) {
-      addAlert("Error loading data", "danger");
+      console.error("Error loading dashboard data:", error);
+      addAlert("Error loading dashboard data", "danger");
     }
     setIsLoading(false);
   };
 
   useEffect(() => {
     if (chartData.length === 0) {
-      loadMockData();
+      loadDashboardData();
     }
+    
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(() => {
+      loadDashboardData();
+    }, 300000); // 5 minutes
+    
+    return () => clearInterval(interval);
   }, []);
+
+  // Also refresh when biData changes (when new files are processed)
+  useEffect(() => {
+    if (biData) {
+      loadDashboardData();
+    }
+  }, [biData]);
 
   return (
     <div className={`min-h-screen p-6 pt-20 ${
@@ -93,7 +125,7 @@ const Dashboard: React.FC = () => {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {mockBIData.map((item) => (
+          {(dashboardData?.kpis || []).map((item: any) => (
             <div key={item.metric} className={`rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow ${
               isDarkMode 
                 ? 'bg-gray-800 border-gray-700' 
@@ -110,11 +142,18 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-1">
                   <TrendingUp className="h-4 w-4 text-green-500" />
-                  <span className="text-sm font-medium text-green-600">{item.change}</span>
+                  <span className="text-sm font-medium text-green-600">{item.change || "+0%"}</span>
                 </div>
               </div>
             </div>
           ))}
+          {(!dashboardData?.kpis || dashboardData.kpis.length === 0) && (
+            <div className="col-span-4 text-center py-8 text-gray-500">
+              <DollarSign className="h-16 w-16 mx-auto mb-4 opacity-50" />
+              <p className="text-lg mb-2">No KPI data available</p>
+              <p className="text-sm">Upload CSV files or add Shopify nodes in the Canvas to generate KPIs</p>
+            </div>
+          )}
         </div>
 
         {/* Main Grid */}
@@ -127,7 +166,7 @@ const Dashboard: React.FC = () => {
                 <h2 className="text-lg font-semibold text-gray-900">AI Summary</h2>
               </div>
               <button
-                onClick={loadMockData}
+                onClick={loadDashboardData}
                 disabled={isLoading}
                 className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
               >
@@ -141,7 +180,9 @@ const Dashboard: React.FC = () => {
                   <span className="text-gray-600">Analyzing data...</span>
                 </div>
               ) : (
-                <p className="text-gray-700">{aiSummary || "No AI summary available yet. Connect Canvas nodes to generate insights."}</p>
+                <p className="text-gray-700">
+                  {dashboardData?.aiSummary || aiSummary || "No AI summary available yet. Connect Canvas nodes to generate insights."}
+                </p>
               )}
             </div>
           </div>

@@ -6,6 +6,7 @@ import { FileText, MoreHorizontal, Trash2, Upload, ExternalLink } from 'lucide-r
 import { DocumentNodeData, BaseNodeProps, sizeConfig } from './interfaces';
 import { useNodeActions } from './useNodeActions';
 import { useAppStore } from '../../store/useAppStore';
+import { parseCSVFile, parsePDFFile, recalculateKPIs } from '../../lib/api-utils';
 
 const DocumentNode: React.FC<BaseNodeProps<DocumentNodeData>> = ({ id, data, selected }) => {
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -45,46 +46,62 @@ const DocumentNode: React.FC<BaseNodeProps<DocumentNodeData>> = ({ id, data, sel
     updateNode({ description: value, isEditingDesc: false });
   };
 
-  const handleDocumentUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const allowedTypes = [
       'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain',
-      'application/rtf',
       'text/csv',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      addAlert('Please upload PDF, Word, Excel, CSV, RTF, or plain text documents.', 'warning');
+      addAlert('Please upload PDF, CSV, or Excel files.', 'warning');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const documentData = e.target?.result as ArrayBuffer;
+    try {
+      updateNode({ aiStatus: 'processing' });
+
+      let result;
+      if (file.type === 'application/pdf') {
+        result = await parsePDFFile(file, id);
+        
+        updateNode({
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          extractedText: result.data.text,
+          lastModified: new Date().toISOString(),
+          aiStatus: 'done'
+        });
+      } else if (file.type.includes('csv') || file.type.includes('excel') || file.type.includes('sheet')) {
+        result = await parseCSVFile(file, id);
+        
+        const csvSummary = `CSV with ${result.data.summary.totalRows} rows and ${result.data.summary.totalColumns} columns`;
+        updateNode({
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          extractedText: csvSummary,
+          lastModified: new Date().toISOString(),
+          aiStatus: 'done'
+        });
+      }
+
+      addAlert(`Document "${file.name}" processed successfully`, 'info');
       
-      updateNode({
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        documentData: Array.from(new Uint8Array(documentData)),
-        lastModified: new Date().toISOString()
-      });
+      // Recalculate KPIs in background
+      recalculateKPIs().catch(console.error);
+      
+    } catch (error) {
+      console.error('Document upload error:', error);
+      updateNode({ aiStatus: 'idle' });
+      addAlert(`Failed to process document: ${error instanceof Error ? error.message : 'Unknown error'}`, 'danger');
+    }
 
-      addAlert(`Document "${file.name}" uploaded successfully`, 'info');
-    };
-
-    reader.onerror = () => {
-      addAlert('Failed to read the document file.', 'danger');
-    };
-
-    reader.readAsArrayBuffer(file);
     event.target.value = '';
   };
 

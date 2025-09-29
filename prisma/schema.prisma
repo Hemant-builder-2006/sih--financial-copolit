@@ -1,0 +1,43 @@
+// Prisma schema for Canvas/AI Dashboard
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Node {
+  id      String   @id @default(cuid())
+  type    String
+  content String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  aiInsights AiInsight[]
+}
+
+model Edge {
+  id     String @id @default(cuid())
+  source String
+  target String
+}
+
+model DashboardKPI {
+  id       String  @id @default(cuid())
+  revenue  Float?
+  expenses Float?
+  profit   Float?
+  roi      Float?
+  createdAt DateTime @default(now())
+}
+
+model AiInsight {
+  id      String   @id @default(cuid())
+  node    Node?    @relation(fields: [nodeId], references: [id])
+  nodeId  String?
+  summary String
+  createdAt DateTime @default(now())
+}

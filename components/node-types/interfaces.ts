@@ -30,6 +30,7 @@ export interface DocumentNodeData extends BaseNodeData {
   fileType?: string;
   documentData?: number[];
   lastModified?: string;
+  extractedText?: string;
 }
 
 export interface ImageNodeData extends BaseNodeData {
@@ -63,8 +64,50 @@ export interface CompanyNodeData extends BaseNodeData {
   companyData?: any[]; // For CSV/Excel data
 }
 
+export interface ShopifyNodeData extends BaseNodeData {
+  type: 'shopify';
+  storeUrl?: string;
+  shopData?: {
+    shop?: {
+      name: string;
+      email: string;
+      domain: string;
+      currency: string;
+      timezone: string;
+      plan_name: string;
+      created_at: string;
+    };
+    products?: {
+      count: number;
+      recent: Array<{
+        id: number;
+        title: string;
+        vendor: string;
+        product_type: string;
+        created_at: string;
+        status: string;
+      }>;
+    };
+    orders?: {
+      count: number;
+      recent: Array<{
+        id: number;
+        name: string;
+        email: string;
+        total_price: string;
+        currency: string;
+        financial_status: string;
+        fulfillment_status: string;
+        created_at: string;
+      }>;
+    };
+  };
+  fetchStatus?: 'idle' | 'loading' | 'success' | 'error';
+  errorMessage?: string;
+}
+
 // Union type for all node data
-export type NodeData = TextNodeData | DocumentNodeData | ImageNodeData | VideoNodeData | AINodeData | CompanyNodeData;
+export type NodeData = TextNodeData | DocumentNodeData | ImageNodeData | VideoNodeData | AINodeData | CompanyNodeData | ShopifyNodeData;
 
 // Base node props
 export interface BaseNodeProps<T extends BaseNodeData> extends NodeProps<T> {

@@ -5,6 +5,7 @@ export { default as ImageNode } from './ImageNode';
 export { default as VideoNode } from './VideoNode';
 export { default as CompanyNode } from './CompanyNode';
 export { default as AINode } from './AINode';
+export { default as ShopifyNode } from './ShopifyNode';
 
 // Export interfaces and hooks
 export * from './interfaces';
@@ -17,6 +18,7 @@ import ImageNode from './ImageNode';
 import VideoNode from './VideoNode';
 import CompanyNode from './CompanyNode';
 import AINode from './AINode';
+import ShopifyNode from './ShopifyNode';
 
 export const nodeTypes = {
   text: TextNode,
@@ -25,4 +27,5 @@ export const nodeTypes = {
   video: VideoNode,
   company: CompanyNode,
   ai: AINode,
+  shopify: ShopifyNode,
 };
